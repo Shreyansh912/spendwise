@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -14,12 +14,16 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
   const router = useRouter();
-  const supabase = createClient();
+
+  // Keep a single persistent client instance across state re-renders
+  const supabase = useMemo(() => createClient(), []);
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
     setErrorMsg("");
+    setSuccessMsg("");
 
     if (password !== confirmPassword) {
       setErrorMsg("Passwords do not match.");
@@ -33,18 +37,37 @@ export default function SignupPage() {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    try {
+      const redirectOrigin =
+        typeof window !== "undefined"
+          ? window.location.origin
+          : "https://spendwise-f3vj.vercel.app";
 
-    setLoading(false);
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          emailRedirectTo: `${redirectOrigin}/dashboard`,
+        },
+      });
 
-    if (error) {
-      setErrorMsg(error.message);
-    } else {
-      router.push("/dashboard");
-      router.refresh();
+      if (error) {
+        setErrorMsg(error.message);
+        return;
+      }
+
+      // If user is created and session exists immediately (email confirmation turned off)
+      if (data?.session) {
+        router.push("/dashboard");
+        router.refresh();
+      } else {
+        // If email confirmation is required by Supabase
+        setSuccessMsg("Account created! Please check your email inbox to confirm your account.");
+      }
+    } catch (err: any) {
+      setErrorMsg(err?.message || "An unexpected error occurred during sign up.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -59,6 +82,11 @@ export default function SignupPage() {
             {errorMsg && (
               <div className="text-xs text-rose-400 bg-rose-500/10 p-2.5 rounded border border-rose-500/20">
                 {errorMsg}
+              </div>
+            )}
+            {successMsg && (
+              <div className="text-xs text-emerald-400 bg-emerald-500/10 p-2.5 rounded border border-emerald-500/20">
+                {successMsg}
               </div>
             )}
             <div>
