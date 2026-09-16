@@ -17,7 +17,6 @@ export default function SignupPage() {
   const [successMsg, setSuccessMsg] = useState("");
   const router = useRouter();
 
-  // Keep a single persistent client instance across state re-renders
   const supabase = useMemo(() => createClient(), []);
 
   async function handleSignUp(e: React.FormEvent) {
@@ -56,16 +55,20 @@ export default function SignupPage() {
         return;
       }
 
-      // If user is created and session exists immediately (email confirmation turned off)
       if (data?.session) {
         router.push("/dashboard");
         router.refresh();
       } else {
-        // If email confirmation is required by Supabase
-        setSuccessMsg("Account created! Please check your email inbox to confirm your account.");
+        setSuccessMsg(
+          "Account created! Please check your email inbox to confirm your account."
+        );
       }
-    } catch (err: any) {
-      setErrorMsg(err?.message || "An unexpected error occurred during sign up.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setErrorMsg(err.message);
+      } else {
+        setErrorMsg("An unexpected error occurred during sign up.");
+      }
     } finally {
       setLoading(false);
     }
@@ -75,7 +78,9 @@ export default function SignupPage() {
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       <Card className="w-full max-w-sm border-slate-800 bg-slate-900/60 text-slate-100">
         <CardHeader>
-          <CardTitle className="text-xl font-bold text-center">Create SpendWise Account</CardTitle>
+          <CardTitle className="text-xl font-bold text-center">
+            Create SpendWise Account
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignUp} className="space-y-4">
@@ -112,7 +117,9 @@ export default function SignupPage() {
               />
             </div>
             <div>
-              <label className="text-xs text-slate-400 block mb-1">Confirm Password</label>
+              <label className="text-xs text-slate-400 block mb-1">
+                Confirm Password
+              </label>
               <Input
                 type="password"
                 placeholder="••••••••"
